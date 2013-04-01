@@ -1,5 +1,5 @@
 /*!
-Alpaca Version 1.0.7
+Alpaca Version 1.0.9
 
 Copyright 2013 Gitana Software, Inc.
 
@@ -20,7 +20,6 @@ address:
 
   info@gitanasoftware.com
 */
-
 /**
  * UMD wrapper for compatibility with browser, Node and AMD.
  *
@@ -41,7 +40,7 @@ address:
     {
         // AMD. Register as an anonymous module.
         //define(['b'], factory);
-        define('alpaca', ['jquery', 'jquery.tmpl', 'jquery-ui'], factory);
+        define('alpaca', ['jquery', 'jquery-tmpl', 'jquery-ui', 'ace/ace'], factory);
     }
     else
     {
@@ -50,7 +49,7 @@ address:
         root["Alpaca"] = factory();
     }
 
-}(this, function () {
+}(this, function ($, tmpl, jQueryUI, ace) {
 
     //use b in some fashion.
 
@@ -60,7 +59,7 @@ address:
     //return {};
 
     /*!
-Alpaca Version 1.0.7
+Alpaca Version 1.0.9
 
 Copyright 2013 Gitana Software, Inc.
 
@@ -81,154 +80,155 @@ address:
 
   info@gitanasoftware.com
 */
-
-/*!
-	Base.js, version 1.1a
-	Copyright 2006-2010, Dean Edwards
-	License: http://www.opensource.org/licenses/mit-license.php
-*/
-/**
- * @ignore
- */
-var Base = function() {
-	// dummy
-};
-
-Base.extend = function(_instance, _static) { // subclass
-	var extend = Base.prototype.extend;
-	
-	// build the prototype
-	Base._prototyping = true;
-	var proto = new this;
-	extend.call(proto, _instance);
-  proto.base = function() {
-    // call this method from any other method to invoke that method's ancestor
-  };
-	delete Base._prototyping;
-	
-	// create the wrapper for the constructor function
-	//var constructor = proto.constructor.valueOf(); //-dean
-	var constructor = proto.constructor;
-	var klass = proto.constructor = function() {
-		if (!Base._prototyping) {
-			if (this._constructing || this.constructor == klass) { // instantiation
-				this._constructing = true;
-				constructor.apply(this, arguments);
-				delete this._constructing;
-			} else if (arguments[0] != null) { // casting
-				return (arguments[0].extend || extend).call(arguments[0], proto);
-			}
-		}
-	};
-	
-	// build the class interface
-	klass.ancestor = this;
-	klass.extend = this.extend;
-	klass.forEach = this.forEach;
-	klass.implement = this.implement;
-	klass.prototype = proto;
-	klass.toString = this.toString;
-	klass.valueOf = function(type) {
-		//return (type == "object") ? klass : constructor; //-dean
-		return (type == "object") ? klass : constructor.valueOf();
-	};
-	extend.call(klass, _static);
-	// class initialisation
-	if (typeof klass.init == "function") klass.init();
-	return klass;
-};
-
-Base.prototype = {	
-	extend: function(source, value) {
-		if (arguments.length > 1) { // extending with a name/value pair
-			var ancestor = this[source];
-			if (ancestor && (typeof value == "function") && // overriding a method?
-				// the valueOf() comparison is to avoid circular references
-				(!ancestor.valueOf || ancestor.valueOf() != value.valueOf()) &&
-				/\bbase\b/.test(value)) {
-				// get the underlying method
-				var method = value.valueOf();
-				// override
-                /**
-                 * @ignore
-                 */
-                value = function() {
-					var previous = this.base || Base.prototype.base;
-					this.base = ancestor;
-					var returnValue = method.apply(this, arguments);
-					this.base = previous;
-					return returnValue;
-				};
-				// point to the underlying method
-				value.valueOf = function(type) {
-					return (type == "object") ? value : method;
-				};
-				value.toString = Base.toString;
-			}
-			this[source] = value;
-		} else if (source) { // extending with an object literal
-			var extend = Base.prototype.extend;
-			// if this object has a customised extend method then use it
-			if (!Base._prototyping && typeof this != "function") {
-				extend = this.extend || extend;
-			}
-			var proto = {toSource: null};
-			// do the "toString" and other methods manually
-			var hidden = ["constructor", "toString", "valueOf"];
-			// if we are prototyping then include the constructor
-			var i = Base._prototyping ? 0 : 1;
-			while (key = hidden[i++]) {
-				if (source[key] != proto[key]) {
-					extend.call(this, key, source[key]);
-
-				}
-			}
-			// copy each of the source object's properties to this object
-			for (var key in source) {
-				if (!proto[key]) extend.call(this, key, source[key]);
-			}
-		}
-		return this;
-	}
-};
-
-// initialise
-Base = Base.extend({
-	constructor: function() {
-		this.extend(arguments[0]);
-	}
-}, {
-	ancestor: Object,
-	version: "1.1",
-	
-	forEach: function(object, block, context) {
-		for (var key in object) {
-			if (this.prototype[key] === undefined) {
-				block.call(context, object[key], key, object);
-			}
-		}
-	},
-		
-	implement: function() {
-		for (var i = 0; i < arguments.length; i++) {
-			if (typeof arguments[i] == "function") {
-				// if it's a function, call it
-				arguments[i](this.prototype);
-			} else {
-				// add the interface using the extend method
-				this.prototype.extend(arguments[i]);
-			}
-		}
-		return this;
-	},
-	
-	toString: function() {
-		return String(this.valueOf());
-	}
-});
 /*
+ Based on Base.js 1.1a (c) 2006-2010, Dean Edwards
+ Updated to pass JSHint and converted into a module by Kenneth Powers
+ License: http://www.opensource.org/licenses/mit-license.php
+
+ GitHub: https://github.com/KenPowers/Base.js-Module
+ */
+/*global define:true module:true*/
+/*jshint eqeqeq:true*/
+(function (name, global, definition) {
+//    if (typeof module !== 'undefined') {
+//        module.exports = definition();
+//    } else if (typeof define !== 'undefined' && typeof define.amd === 'object') {
+//        define(definition);
+//    } else {
+        global[name] = definition();
+//    }
+})('Base', this, function () {
+    // Base Object
+    var Base = function () {};
+
+    // Implementation
+    Base.extend = function (_instance, _static) { // subclass
+        var extend = Base.prototype.extend;
+        // build the prototype
+        Base._prototyping = true;
+        var proto = new this();
+        extend.call(proto, _instance);
+        proto.base = function () {
+            // call this method from any other method to invoke that method's ancestor
+        };
+        delete Base._prototyping;
+        // create the wrapper for the constructor function
+        //var constructor = proto.constructor.valueOf(); //-dean
+        var constructor = proto.constructor;
+        var klass = proto.constructor = function () {
+            if (!Base._prototyping) {
+                if (this._constructing || this.constructor === klass) { // instantiation
+                    this._constructing = true;
+                    constructor.apply(this, arguments);
+                    delete this._constructing;
+                } else if (arguments[0] !== null) { // casting
+                    return (arguments[0].extend || extend).call(arguments[0], proto);
+                }
+            }
+        };
+        // build the class interface
+        klass.ancestor = this;
+        klass.extend = this.extend;
+        klass.forEach = this.forEach;
+        klass.implement = this.implement;
+        klass.prototype = proto;
+        klass.toString = this.toString;
+        klass.valueOf = function (type) {
+            return (type === 'object') ? klass : constructor.valueOf();
+        };
+        extend.call(klass, _static);
+        // class initialization
+        if (typeof klass.init === 'function') klass.init();
+        return klass;
+    };
+
+    Base.prototype = {
+        extend: function (source, value) {
+            if (arguments.length > 1) { // extending with a name/value pair
+                var ancestor = this[source];
+                if (ancestor && (typeof value === 'function') && // overriding a method?
+                    // the valueOf() comparison is to avoid circular references
+                    (!ancestor.valueOf || ancestor.valueOf() !== value.valueOf()) && /\bbase\b/.test(value)) {
+                    // get the underlying method
+                    var method = value.valueOf();
+                    // override
+                    value = function () {
+                        var previous = this.base || Base.prototype.base;
+                        this.base = ancestor;
+                        var returnValue = method.apply(this, arguments);
+                        this.base = previous;
+                        return returnValue;
+                    };
+                    // point to the underlying method
+                    value.valueOf = function (type) {
+                        return (type === 'object') ? value : method;
+                    };
+                    value.toString = Base.toString;
+                }
+                this[source] = value;
+            } else if (source) { // extending with an object literal
+                var extend = Base.prototype.extend;
+                // if this object has a customized extend method then use it
+                if (!Base._prototyping && typeof this !== 'function') {
+                    extend = this.extend || extend;
+                }
+                var proto = {
+                    toSource: null
+                };
+                // do the "toString" and other methods manually
+                var hidden = ['constructor', 'toString', 'valueOf'];
+                // if we are prototyping then include the constructor
+                for (var i = Base._prototyping ? 0 : 1; i < hidden.length; i++) {
+                    var h = hidden[i];
+                    if (source[h] !== proto[h])
+                        extend.call(this, h, source[h]);
+                }
+                // copy each of the source object's properties to this object
+                for (var key in source) {
+                    if (!proto[key]) extend.call(this, key, source[key]);
+                }
+            }
+            return this;
+        }
+    };
+
+    // initialize
+    Base = Base.extend({
+        constructor: function () {
+            this.extend(arguments[0]);
+        }
+    }, {
+        ancestor: Object,
+        version: '1.1',
+        forEach: function (object, block, context) {
+            for (var key in object) {
+                if (this.prototype[key] === undefined) {
+                    block.call(context, object[key], key, object);
+                }
+            }
+        },
+        implement: function () {
+            for (var i = 0; i < arguments.length; i++) {
+                if (typeof arguments[i] === 'function') {
+                    // if it's a function, call it
+                    arguments[i](this.prototype);
+                } else {
+                    // add the interface using the extend method
+                    this.prototype.extend(arguments[i]);
+                }
+            }
+            return this;
+        },
+        toString: function () {
+            return String(this.valueOf());
+        }
+    });
+
+    // Return Base implementation
+    return Base;
+});/*
  json2.js
- 2011-10-19
+ 2012-10-08
 
  Public Domain.
 
@@ -387,8 +387,7 @@ Base = Base.extend({
 // Create a JSON object only if one does not already exist. We create the
 // methods in a closure to avoid creating global variables.
 
-var JSON;
-if (!JSON) {
+if (typeof JSON !== 'object') {
     JSON = {};
 }
 
@@ -712,8 +711,7 @@ if (!JSON) {
             throw new SyntaxError('JSON.parse');
         };
     }
-}());
-/*!
+}());/*!
  * JSONSchema Validator - Validates JavaScript objects using JSON Schemas
  *    (http://www.json.com/json-schema-proposal/)
  *
@@ -1562,7 +1560,8 @@ var equiv = function () {
     });
 
 
-})(jQuery);/**
+})(jQuery);/*jshint -W004 */ // duplicate variables
+/**
  * Alpaca forms engine for jQuery
  */
 (function($) {
@@ -1610,7 +1609,7 @@ var equiv = function () {
      */
     Alpaca = function() {
         var args = Alpaca.makeArray(arguments);
-        if (args.length == 0) {
+        if (args.length === 0) {
             // illegal
             alert("No arguments - no supported");
             return null;
@@ -1648,7 +1647,7 @@ var equiv = function () {
                 }
             }
 
-            if (field != null) {
+            if (field !== null) {
                 return field;
             } else {
                 // otherwise, grab the data inside the element and use that for the control
@@ -1751,7 +1750,7 @@ var equiv = function () {
                     // pick first element in form
                     if (control.children && control.children.length > 0) {
                         if (control.children.field && control.children.field.length > 0) {
-                            $(control.children[0].field[0]).focus()
+                            $(control.children[0].field[0]).focus();
                         }
                     }
                 }
@@ -1929,7 +1928,7 @@ var equiv = function () {
          * @returns {Boolean} True if the variable is empty, false otherwise.
          */
         isEmpty: function(obj) {
-            return Alpaca.isUndefined(obj) || obj == null;
+            return Alpaca.isUndefined(obj) || obj === null;
         },
 
         /**
@@ -2026,7 +2025,7 @@ var equiv = function () {
          * @param {String} msg The message to be logged.
          */
         log: function(msg) {
-            if (!(typeof console == "undefined")) {
+            if (typeof(console) !== "undefined") {
                 console.log(msg);
             }
         },
@@ -2378,7 +2377,7 @@ var equiv = function () {
 
                 // get the html source
                 var template = templateDescriptor.template.value;
-                if ($('.alpaca' + this.fieldTemplatePostfix[name], Alpaca.safeDomParse(template)).length == 0) {
+                if ($('.alpaca' + this.fieldTemplatePostfix[name], Alpaca.safeDomParse(template)).length === 0) {
                     if (this.fieldTemplatePostfix[name]) {
                         template = Alpaca.safeDomParse(template).addClass("alpaca" + this.fieldTemplatePostfix[name]);
                     }
@@ -2392,7 +2391,7 @@ var equiv = function () {
                 var label = view.tmpl(templateDescriptor, object.data);
                 if (label) {
                     if (this.fieldTemplatePostfix[name]) {
-                        if ($('.alpaca' + this.fieldTemplatePostfix[name], label).length == 0) {
+                        if ($('.alpaca' + this.fieldTemplatePostfix[name], label).length === 0) {
                             label.addClass("alpaca" + this.fieldTemplatePostfix[name]);
                         }
                         if (!label.attr("id")) {
@@ -2546,7 +2545,7 @@ var equiv = function () {
                 el.css(styleAttributes);
             }
             if (classNames) {
-                for (className in classNames) {
+                for (var className in classNames) {
                     el.addClass(className);
                 }
             }
@@ -2563,7 +2562,7 @@ var equiv = function () {
         elementFromTemplate: function(template, substitutions) {
             var html = template;
             if (substitutions) {
-                for (x in substitutions) {
+                for (var x in substitutions) {
                     html = Alpaca.replaceAll(html, "${" + x + "}", substitutions[x]);
                 }
             }
@@ -2598,7 +2597,7 @@ var equiv = function () {
                 throw {
                     name: 'TypeError',
                     message: "The function is undefined."
-                }
+                };
             }
 
             /**
@@ -2685,7 +2684,7 @@ var equiv = function () {
                 }
                 if (!Alpaca.isEmpty(current[key])) {
                     current = current[key];
-                    if (keys.length == 0) {
+                    if (keys.length === 0) {
                         element = current;
                     }
                 } else {
@@ -2828,7 +2827,7 @@ var equiv = function () {
                 return target;
             };
 
-            _merge(source, target)
+            _merge(source, target);
 
             return target;
         },
@@ -2855,11 +2854,11 @@ var equiv = function () {
                 }
             } else if (Alpaca.isArray(obj)) {
                 clone = [];
-                for (var i = 0 ; i < obj.length ; i++) {
-                    if (Alpaca.isObject(obj[i]) || Alpaca.isArray(obj[i])) {
-                        clone.push(Alpaca.cloneObject(obj[i]));
+                for (var z = 0 ; z < obj.length ; z++) {
+                    if (Alpaca.isObject(obj[z]) || Alpaca.isArray(obj[z])) {
+                        clone.push(Alpaca.cloneObject(obj[z]));
                     } else {
-                        clone.push(obj[i]);
+                        clone.push(obj[z]);
                     }
                 }
             } else {
@@ -2940,13 +2939,13 @@ var equiv = function () {
             if (Alpaca.isEmpty(val)) {
                 empty = true;
             } else {
-                if (Alpaca.isString(val) && val == "") {
+                if (Alpaca.isString(val) && val === "") {
                     empty = true;
                 }
                 if (Alpaca.isObject(val) && $.isEmptyObject(val)) {
                     empty = true;
                 }
-                if (Alpaca.isArray(val) && val.length == 0) {
+                if (Alpaca.isArray(val) && val.length === 0) {
                     empty = true;
                 }
                 if (Alpaca.isNumber(val) && isNaN(val)) {
@@ -3141,7 +3140,7 @@ var equiv = function () {
                 renderedCallback = field.view.postRender;
             }
 
-            if (callback != null) {
+            if (callback !== null) {
                 callback(field, renderedCallback);
             } else {
                 field.render(renderedCallback);
@@ -3719,6 +3718,20 @@ var equiv = function () {
         });
     };
 
+    /**
+     * When dom elements are removed, we fire the special "destroyed" event to allow for late cleanup of any Alpaca code
+     * that might be in-memory and linked to the dom element.
+     *
+     * @type {Object}
+     */
+    $.event.special.destroyed = {
+        remove: function(o) {
+            if (o.handler) {
+                o.handler();
+            }
+        }
+    };
+
 })(jQuery);
 (function()
 {
@@ -3806,7 +3819,7 @@ var equiv = function () {
                 }
 
                 return html;
-            }
+            };
         },
 
         /**
@@ -3830,11 +3843,11 @@ var equiv = function () {
             var type = "html";
             if (Alpaca.isString(template))
             {
-                if (template.indexOf("./") == 0 || template.indexOf("/") == 0 || template.indexOf("../") == 0)
+                if (template.indexOf("./") === 0 || template.indexOf("/") === 0 || template.indexOf("../") === 0)
                 {
                     type = "uri";
                 }
-                else if (template.indexOf("#") == 0 || template.indexOf(".") == 0 || template.indexOf("[") == 0)
+                else if (template.indexOf("#") === 0 || template.indexOf(".") === 0 || template.indexOf("[") === 0)
                 {
                     type = "selector";
                 }
@@ -3854,7 +3867,7 @@ var equiv = function () {
                 var fileExtension = self.fileExtension();
 
                 var url = template;
-                if (url.indexOf("." + fileExtension) == -1) {
+                if (url.indexOf("." + fileExtension) === -1) {
                     url += "." + fileExtension;
                 }
 
@@ -3900,7 +3913,7 @@ var equiv = function () {
             // trim the html
             html = Alpaca.trim(html);
 
-            if (html.toLowerCase().indexOf("<script") == 0)
+            if (html.toLowerCase().indexOf("<script") === 0)
             {
                 // already has script tag
             }
@@ -4432,7 +4445,7 @@ var equiv = function () {
                 "rus":"Russian Federation",
                 "rwa":"Rwanda",
                 "reu":"Reunion",
-                "blm":"Saint BarthŽlemy",
+                "blm":"Saint Barthelemy",
                 "shn":"Saint Helena",
                 "kna":"Saint Kitts and Nevis",
                 "lca":"Saint Lucia",
@@ -4769,6 +4782,7 @@ var equiv = function () {
         }
     });
 })(jQuery);
+/*jshint -W014 */ // bad line breaking
 (function($) {
     
     var Alpaca = $.alpaca;
@@ -4945,11 +4959,11 @@ var equiv = function () {
     {
         // find the data-role="page" and refresh it
         var el = fieldEl;
-        while (el != null && el.attr("data-role") !== "page")
+        while (el !== null && el.attr("data-role") !== "page")
         {
             el = el.parent();
         }
-        if (el != null) {
+        if (el !== null) {
             $(el).trigger('pagecreate');
         }
     };
@@ -4963,7 +4977,8 @@ var equiv = function () {
         "displayReadonly":false
     });
 
-})(jQuery);(function($) {
+})(jQuery);/*jshint -W014 */ // bad line breaking
+(function($) {
 
     var Alpaca = $.alpaca;
 
@@ -5493,7 +5508,8 @@ var equiv = function () {
             return true;
         }
     });
-})(jQuery);(function($) {
+})(jQuery);/*jshint -W004 */ // duplicate variables
+(function($) {
 
     var Alpaca = $.alpaca;
 
@@ -5756,7 +5772,7 @@ var equiv = function () {
             if (!this.errorCallback) {
                 this.errorCallback = function(error) {
                     alert(error.message ? error.message : "Caught some error!");
-                }
+                };
             }
 
             // check if this field rendering is single-level or not
@@ -5783,11 +5799,11 @@ var equiv = function () {
                 this.schema = {};
                 noSchema = true;
             }
-            if (!this.options.label && this.schema.title != null) {
+            if (!this.options.label && this.schema.title !== null) {
                 this.options.label = this.schema.title;
             }
 
-            if (!this.options.helper && this.schema.description != null) {
+            if (!this.options.helper && this.schema.description !== null) {
                 this.options.helper = this.schema.description;
             }
 
@@ -5814,7 +5830,7 @@ var equiv = function () {
             this.isDisplayOnly = function()
             {
                 return (self.view.type == "view");
-            }
+            };
 
         },
 
@@ -5914,7 +5930,7 @@ var equiv = function () {
                 }
             }
             // last try to see if we can populate the label from propertyId
-            if (this.options.label == null && this.propertyId) {
+            if (this.options.label === null && this.propertyId) {
                 this.options.label = this.propertyId;
             }
 
@@ -6132,10 +6148,10 @@ var equiv = function () {
 
                 // for edit or create mode
                 // injects Ids
-                if (this.getEl().attr("id") == null) {
+                if (this.getEl().attr("id") === null) {
                     this.getEl().attr("id", this.getId() + "-field-outer");
                 }
-                if (this.getEl().attr("alpaca-field-id") == null) {
+                if (this.getEl().attr("alpaca-field-id") === null) {
                     this.getEl().attr("alpaca-field-id", this.getId());
                 }
                 // optional
@@ -6712,7 +6728,7 @@ var equiv = function () {
             this.initializing = true;
 
 
-            if (this.callback != null) {
+            if (this.callback !== null) {
                 this.callback(this, this.renderedCallback);
             } else {
                 this.render(this.renderedCallback);
@@ -6803,7 +6819,7 @@ var equiv = function () {
                         func.call(_this,e);
                     });
                 }
-            })
+            });
         },
 
         /**
@@ -7084,7 +7100,7 @@ var equiv = function () {
                         }
                     }
                 }
-            }
+            };
         },
 
         /**
@@ -7243,7 +7259,8 @@ var equiv = function () {
                             "default": true
                         }
                     }
-                }
+                };
+
             } else {
                 delete schemaOfOptions.properties.renderForm;
                 delete schemaOfOptions.properties.form;
@@ -7326,7 +7343,7 @@ var equiv = function () {
                             }
                         }
                     }
-                }
+                };
             }
 
             return optionsForOptions;
@@ -7503,6 +7520,17 @@ var equiv = function () {
          * @param {Object} e keypress event
          */
         onKeyPress: function(e) {
+
+            // if the field is currently invalid, then we provide early feedback to the user as to when they enter
+            // if the field was valid, we don't render invalidation feedback until they blur the field
+
+            // was the control valid previously?
+            var wasValid = this.isValid();
+            if (!wasValid)
+            {
+                this.renderValidationState();
+            }
+
         },
 
         /**
@@ -7521,23 +7549,6 @@ var equiv = function () {
          */
         onKeyUp: function(e) {
 
-            // if the field is currently invalid, then we provide early feedback to the user as to when they enter
-            // a value that switches into a valid state
-            // otherwise, we wait on blur() until we invalidate
-
-            // was the control valid previously?
-            var wasValid = this.isValid();
-
-            // validate
-            //this.validate();
-
-            // is the control valid now?
-            //var nowValid = this.isValid();
-
-            if (!wasValid)
-            {
-                this.renderValidationState();
-            }
         },
 
         /**
@@ -8530,7 +8541,6 @@ var equiv = function () {
 
             // populate the buttons as well
             this.buttons = {};
-            var _this = this;
             $.each($('.alpaca-form-button', this.container),function(k,v) {
 
                 // TODO: this is technically wrong since we only want to trap for left-mousedown...
@@ -8908,7 +8918,7 @@ var equiv = function () {
          */
         _validatePattern: function() {
             if (this.schema.pattern) {
-	            var val = this.getValue();
+                var val = this.getValue();
                 if (Alpaca.isEmpty(val)) {
                     val = "";
                 }
@@ -9072,7 +9082,7 @@ var equiv = function () {
                 }
             });
         },    
-				    
+
         /**
          * @see Alpaca.Field#getTitle
          */
@@ -9536,12 +9546,13 @@ var equiv = function () {
          */
         setValue: function(value) {
             // be sure to call into base method
-        	// We won't be able to actually set the value for file input field so we use the mask input
-        	var tmp = this.field;
-        	this.field = $('.alpaca-filefield-control',this.fieldContainer);
+            // We won't be able to actually set the value for file input field so we use the mask input
+            var tmp = this.field;
+            this.field = $('.alpaca-filefield-control',this.fieldContainer);
             this.base(value);
+
             // switch it back to actual file input
-        	this.field = tmp;
+            this.field = tmp;
         },
         
         /**
@@ -9552,7 +9563,7 @@ var equiv = function () {
             // apply additional css
 			if (this.fieldContainer) {
 				this.fieldContainer.addClass("alpaca-controlfield-file");
-			}            			
+            }
         },//__BUILDER_HELPERS
 		
 		/**
@@ -9854,7 +9865,7 @@ var equiv = function () {
                 this.options.emptySelectFirst = false;
             }
         },
-		        
+
         /**
          * @see Alpaca.Field#getValue
          */
@@ -9882,7 +9893,7 @@ var equiv = function () {
                 });
 
                 if (this.options.emptySelectFirst) {
-                    if ($("input:radio:checked",this.field).length == 0) {
+                    if ($("input:radio:checked",this.field).length === 0) {
                         $("input:radio:first",this.field).attr("checked","checked");
                     }
                 }
@@ -9915,7 +9926,7 @@ var equiv = function () {
 
                     this.data = this.selectOptions[0].value;
 
-                    if ($("input:radio:checked",this.field).length == 0) {
+                    if ($("input:radio:checked",this.field).length === 0) {
                         $("input:radio:first",this.field).attr("checked","checked");
                     }
                 }
@@ -10057,14 +10068,14 @@ var equiv = function () {
         setValue: function(val) {
             if (Alpaca.isArray(val)) {
                 if (!Alpaca.compareArrayContent(val, this.getValue())) {
-                    if (val != null && this.field) {
+                    if (val !== null && this.field) {
                         this.field.val(val);
                     }
                     this.base(val);
                 }
             } else {
                 if (val != this.getValue()) {
-                    if (val != null && this.field) {
+                    if (val !== null && this.field) {
                         this.field.val(val);
                     }
                     this.base(val);
@@ -10437,7 +10448,10 @@ var equiv = function () {
         _validateDivisibleBy: function() {
             var floatValue = this.getValue();
             if (!Alpaca.isEmpty(this.schema.divisibleBy)) {
-                if (!(floatValue % this.schema.divisibleBy == 0)) {
+
+                // mod
+                if (floatValue % this.schema.divisibleBy !== 0)
+                {
                     return false;
                 }
             }
@@ -10691,16 +10705,16 @@ var equiv = function () {
                 var childField = this.children[i];
                 if (data.length > i) {
                     childField.setValue(data[i]);
-		        } else {
-		            this.removeItem(childField.id); //remove child items if there are more children than in data
+                } else {
+                    this.removeItem(childField.id); //remove child items if there are more children than in data
                 }
             }
 
-	        // if the number of items in the data is greater than the number of existing child elements
-	        while(i < data.length) {
+            // if the number of items in the data is greater than the number of existing child elements
+            while(i < data.length) {
                 this.addItem(i, null, data[i]); //use the default value
-		        i++;
-	        }
+                i++;
+            }
         },
 
         /**
@@ -10795,7 +10809,7 @@ var equiv = function () {
                 $.each(this.children, function(index, val) {
                     if (val.getId() == fromId) {
                         var toIndex;
-                        if (isUp == true) {
+                        if (isUp === true) {
                             toIndex = index - 1;
                             if (toIndex < 0) {
                                 toIndex = _this.children.length - 1;
@@ -10867,7 +10881,7 @@ var equiv = function () {
                     $(this).addClass('alpaca-fieldset-array-item-toolbar-disabled');
                 });
             }
-            if (this.getSize() == 0) {
+            if (this.getSize() === 0) {
                 this.renderArrayToolbar(this.outerEl);
             } else {
                 if (this.arrayToolbar) {
@@ -10892,76 +10906,76 @@ var equiv = function () {
                 var id = containerElem.attr('alpaca-id');
                 var fieldControl = this.childrenById[id];
                 var itemToolbarTemplateDescriptor = this.view.getTemplateDescriptor("arrayItemToolbar");
-	            if (itemToolbarTemplateDescriptor) {
+                if (itemToolbarTemplateDescriptor) {
 
-		            // Base buttons : add & remove
+                    // Base buttons : add & remove
                     var buttonsDef = [
                         {
                             feature: "add",
                             icon: _this.addIcon,
                             label: (_this.options.items && _this.options.items.addItemLabel) ? _this.options.items.addItemLabel : "Add Item",
-	                        clickCallback: function(id, arrayField) {
-		                        var newContainerElem = arrayField.addItem(containerElem.index() + 1, null, null, id);
-		                        arrayField.enrichElements(newContainerElem);
-		                        return false;
-	                        }
+                            clickCallback: function(id, arrayField) {
+                                var newContainerElem = arrayField.addItem(containerElem.index() + 1, null, null, id);
+                                arrayField.enrichElements(newContainerElem);
+                                return false;
+                            }
                         },
                         {
                             feature: "remove",
                             icon: _this.removeIcon,
                             label: (_this.options.items && _this.options.items.removeItemLabel) ? _this.options.items.removeItemLabel : "Remove Item",
-	                        clickCallback: function(id, arrayField) {
+                            clickCallback: function(id, arrayField) {
                                 arrayField.removeItem(id);
                             }
                         }
                     ];
 
-		            // Optional buttons : up & down
-		            if ((_this.options.items && _this.options.items.showMoveUpItemButton)) {
-			            buttonsDef.push({
-				            feature: "up",
+                    // Optional buttons : up & down
+                    if ((_this.options.items && _this.options.items.showMoveUpItemButton)) {
+                        buttonsDef.push({
+                            feature: "up",
                             icon: _this.upIcon,
-				            label: (_this.options.items && _this.options.items.moveUpItemLabel) ? _this.options.items.moveUpItemLabel : "Move Up",
-				            clickCallback: function(id, arrayField) {
-					            arrayField.moveItem(id, true);
+                            label: (_this.options.items && _this.options.items.moveUpItemLabel) ? _this.options.items.moveUpItemLabel : "Move Up",
+                            clickCallback: function(id, arrayField) {
+                                arrayField.moveItem(id, true);
                             }
-			            });
-		            }
+                        });
+                    }
 
-		            if ((_this.options.items && _this.options.items.showMoveDownItemButton)) {
-			            buttonsDef.push({
-				            feature: "down",
+                    if ((_this.options.items && _this.options.items.showMoveDownItemButton)) {
+                        buttonsDef.push({
+                            feature: "down",
                             icon: _this.downIcon,
-				            label: (_this.options.items && _this.options.items.moveDownItemLabel) ? _this.options.items.moveDownItemLabel : "Move Down",
-				            clickCallback: function(id, arrayField) {
-					            arrayField.moveItem(id, false);
+                            label: (_this.options.items && _this.options.items.moveDownItemLabel) ? _this.options.items.moveDownItemLabel : "Move Down",
+                            clickCallback: function(id, arrayField) {
+                                arrayField.moveItem(id, false);
                             }
-			            });
-		            }
+                        });
+                    }
 
-		            // Extra buttons : user-defined
-		            if (_this.options.items && _this.options.items.extraToolbarButtons) {
-			            buttonsDef = $.merge(buttonsDef,_this.options.items.extraToolbarButtons);
-		            }
+                    // Extra buttons : user-defined
+                    if (_this.options.items && _this.options.items.extraToolbarButtons) {
+                        buttonsDef = $.merge(buttonsDef,_this.options.items.extraToolbarButtons);
+                    }
 
                     var toolbarElem = _this.view.tmpl(itemToolbarTemplateDescriptor, {
                         "id": id,
                         "buttons": buttonsDef
                     });
-                    if (toolbarElem.attr("id") == null) {
+                    if (toolbarElem.attr("id") === null) {
                         toolbarElem.attr("id", id + "-item-toolbar");
                     }
 
                     // Process all buttons
-		            for (var i in buttonsDef) {
-			            (function() { // closure to prevent "def" leaking
-				            var def = buttonsDef[i];
-				            var el = toolbarElem.find('.alpaca-fieldset-array-item-toolbar-'+def.feature);
-				            el.click(function(e) {return def.clickCallback(id, _this, e)});
-				            if (_this.buttonBeautifier) {
-					            _this.buttonBeautifier.call(_this,el, def.icon);
-				            }
-			            })();
+                    for (var i in buttonsDef) {
+                        (function() { // closure to prevent "def" leaking
+                            var def = buttonsDef[i];
+                            var el = toolbarElem.find('.alpaca-fieldset-array-item-toolbar-'+def.feature);
+                            el.click(function(e) {return def.clickCallback(id, _this, e);});
+                            if (_this.buttonBeautifier) {
+                                _this.buttonBeautifier.call(_this,el, def.icon);
+                            }
+                        })();
                     }
 
                     if (this.options.toolbarSticky) {
@@ -10974,6 +10988,7 @@ var equiv = function () {
                             $('.alpaca-fieldset-array-item-toolbar', this).hide();
                         });
                     }
+
                 }
             }
         },
@@ -10991,9 +11006,10 @@ var equiv = function () {
                     "id": id,
                     "addItemLabel": (_this.options.items && _this.options.items.addItemLabel) ? _this.options.items.addItemLabel : "Add Item"
                 });
-                if (toolbarElem.attr("id") == null) {
+                if (toolbarElem.attr("id") === null) {
                     toolbarElem.attr("id", id + "-array-toolbar");
                 }
+
                 // add actions to toolbar buttons
                 if (this.options.toolbarStyle == "link") {
                     $('.alpaca-fieldset-array-toolbar-add', toolbarElem).click(function() {
@@ -11066,7 +11082,7 @@ var equiv = function () {
                     itemSchema = _this.schema.items;
                 }
 
-                if (fieldOptions == null && _this.options && _this.options.fields && _this.options.fields["item"]) {
+                if (fieldOptions === null && _this.options && _this.options.fields && _this.options.fields["item"]) {
                     fieldOptions = _this.options.fields["item"];
                 }
 
@@ -11271,7 +11287,7 @@ var equiv = function () {
             };
 
             if (this.children && this.children[0]) {
-                Alpaca.merge(properties.properties.items.properties, this.children[0].getSchemaOfSchema())
+                Alpaca.merge(properties.properties.items.properties, this.children[0].getSchemaOfSchema());
             }
 
             return Alpaca.merge(this.base(), properties);
@@ -11319,7 +11335,7 @@ var equiv = function () {
                         "description": "Options for array items.",
                         "type": "object",
                         "properties": {
-	                        "extraToolbarButtons": {
+                            "extraToolbarButtons": {
                                 "title": "Extra Toolbar buttons",
                                 "description": "Buttons to be added next to add/remove/up/down, see examples",
                                 "type": "array",
@@ -11367,7 +11383,7 @@ var equiv = function () {
             };
 
             if (this.children && this.children[0]) {
-                Alpaca.merge(properties.properties.items.properties, this.children[0].getSchemaOfSchema())
+                Alpaca.merge(properties.properties.items.properties, this.children[0].getSchemaOfSchema());
             }
 
             return Alpaca.merge(this.base(), properties);
@@ -11433,6 +11449,7 @@ var equiv = function () {
     Alpaca.registerDefaultSchemaFieldMapping("array", "array");
 
 })(jQuery);
+/*jshint -W004 */ // duplicate variables
 (function($) {
 
     var Alpaca = $.alpaca;
@@ -11754,7 +11771,7 @@ var equiv = function () {
                             } else if (Alpaca.isArray(itemDependencies)) {
                                 $.each(itemDependencies, function(index, value) {
                                     _this.enableDependency(propertyId, value);
-                                })
+                                });
                             }
                         }
                     }
@@ -11772,11 +11789,35 @@ var equiv = function () {
              * false otherwise.
              */
             getDependencyStatus: function(propertyId, dependency) {
-                var shouldShow = this.childrenByPropertyId[dependency] && !Alpaca.isValEmpty(this.childrenByPropertyId[dependency].data);
+
+                // assume we shouldn't show
+                var shouldShow = false;
+
+                // check the field to see if the dependency field has a value
+                // if it does have a value, then we'll assume we should show
+                var child = this.childrenByPropertyId[dependency];
+                if (child)
+                {
+                    if (!Alpaca.isValEmpty(child.data))
+                    {
+                        // if the data is actually a boolean false, then we make a special assumption
+                        // that this is the same as having no value (only applies to boolean fields)
+                        if (child.data === false)
+                        {
+                        }
+                        else
+                        {
+                            // otherwise, we assume that is has a valid and so we must now challenge to
+                            // assert that the value is invalid
+                            shouldShow = true;
+                        }
+                    }
+                }
+
                 var itemDependencySettings = this.childrenByPropertyId[propertyId].options.dependencies;
                 if (itemDependencySettings) {
 
-                    if (itemDependencySettings[dependency] != null && Alpaca.isFunction(itemDependencySettings[dependency])) {
+                    if (itemDependencySettings[dependency] !== null && Alpaca.isFunction(itemDependencySettings[dependency])) {
                         shouldShow = itemDependencySettings[dependency].call(this,this.childrenByPropertyId[dependency].data);
                     } else {
 
@@ -11790,7 +11831,7 @@ var equiv = function () {
 
                             } else {
 
-                                if (itemDependencySettings[dependency] != null && itemDependencySettings[dependency] != this.childrenByPropertyId[dependency].data) {
+                                if (itemDependencySettings[dependency] !== null && itemDependencySettings[dependency] != this.childrenByPropertyId[dependency].data) {
                                     shouldShow = false;
                                 }
 
@@ -11947,7 +11988,7 @@ var equiv = function () {
                         };
                     }(i, stepBindings);
 
-                    if (i == 0) {
+                    if (i === 0) {
                         _this._createNextButton(i, true, vFunc);
                         _this._selectStep(i);
                     } else if (i == count - 1) {
@@ -12050,7 +12091,7 @@ var equiv = function () {
                     }(i, stepBindings);
 
 
-                    if (i == 0) {
+                    if (i === 0) {
                         _this._createNextButton(i, false, vFunc);
                         _this._selectStep(i);
                     } else if (i == totalSteps - 1) {
@@ -12732,7 +12773,7 @@ var equiv = function () {
 	});
 })(jQuery);
 /*!
-Alpaca Version 1.0.7
+Alpaca Version 1.0.9
 
 Copyright 2013 Gitana Software, Inc.
 
@@ -12753,7 +12794,6 @@ address:
 
   info@gitanasoftware.com
 */
-
 (function($) {
 
     var Alpaca = $.alpaca;
@@ -12894,7 +12934,7 @@ address:
                                     }, function(results, status) {
                                         if (status == google.maps.GeocoderStatus.OK) {
                                             var mapCanvasId = _this.getId() + "-map-canvas";
-                                            if ($('#' + mapCanvasId).length == 0) {
+                                            if ($('#' + mapCanvasId).length === 0) {
                                                 $("<div id='" + mapCanvasId + "' class='alpaca-controlfield-address-mapcanvas'></div>").appendTo(_this.fieldContainer);
                                             }
                                             var map = new google.maps.Map(document.getElementById(_this.getId() + "-map-canvas"), {
@@ -13103,7 +13143,7 @@ address:
          */
         setValue: function(val) {
             // skip out if no date
-            if (val == "") {
+            if (val === "") {
                 this.base(val);
                 return;
             }
@@ -13370,6 +13410,335 @@ address:
 
     var Alpaca = $.alpaca;
 
+    Alpaca.Fields.EditorField = Alpaca.Fields.TextField.extend(
+        /**
+         * @lends Alpaca.Fields.EditorField.prototype
+         */
+        {
+            /**
+             * @constructs
+             * @augments Alpaca.Fields.TextField
+             *
+             * @class Textarea control for chunk of text.
+             *
+             * @param {Object} container Field container.
+             * @param {Any} data Field data.
+             * @param {Object} options Field options.
+             * @param {Object} schema Field schema.
+             * @param {Object|String} view Field view.
+             * @param {Alpaca.Connector} connector Field connector.
+             * @param {Function} errorCallback Error callback.
+             */
+            constructor: function(container, data, options, schema, view, connector, errorCallback) {
+                this.base(container, data, options, schema, view, connector, errorCallback);
+            },
+
+            /**
+             * @see Alpaca.Fields.TextField#setup
+             */
+            setup: function() {
+                this.base();
+
+                this.controlFieldTemplateDescriptor = this.view.getTemplateDescriptor("controlFieldEditor");
+            },
+
+            /**
+             * @see Alpaca.Fields.TextField#postRender
+             */
+            postRender: function() {
+                this.base();
+
+                var self = this;
+
+                if (this.fieldContainer) {
+                    this.fieldContainer.addClass('alpaca-controlfield-editor');
+
+                    // set field container parent width = 100%
+                    $(this.fieldContainer).parent().css("width", "100%");
+
+                    // ACE HEIGHT
+                    var aceHeight = this.options.aceHeight;
+                    if (aceHeight)
+                    {
+                        $(this.fieldContainer).css("height", aceHeight);
+                    }
+
+                    // ACE WIDTH
+                    var aceWidth = this.options.aceWidth;
+                    if (!aceWidth) {
+                        aceWidth = "100%";
+                    }
+                    $(this.fieldContainer).css("width", aceWidth);
+                }
+
+                // locate where we will insert the editor
+                var el = $(this.fieldContainer).find(".control-field-editor-el")[0];
+
+                // ace must be included ahead of time
+                this.editor = ace.edit(el);
+
+                // theme
+                var aceTheme = this.options.aceTheme;
+                if (!aceTheme) {
+                    aceTheme = "ace/theme/chrome";
+                }
+                this.editor.setTheme(aceTheme);
+
+                // mode
+                var aceMode = this.options.aceMode;
+                if (!aceMode) {
+                    aceMode = "ace/mode/json";
+                }
+                this.editor.getSession().setMode(aceMode);
+
+                this.editor.renderer.setHScrollBarAlwaysVisible(false);
+                //this.editor.renderer.setVScrollBarAlwaysVisible(false); // not implemented
+
+                // set data onto editor
+                this.editor.setValue(this.data);
+                this.editor.clearSelection();
+
+                // FIT-CONTENT the height of the editor to the contents contained within
+                if (this.options.aceFitContentHeight)
+                {
+                    var heightUpdateFunction = function() {
+
+                        // http://stackoverflow.com/questions/11584061/
+                        var newHeight = self.editor.getSession().getScreenLength() * self.editor.renderer.lineHeight + self.editor.renderer.scrollBar.getWidth();
+
+                        $(self.fieldContainer).height(newHeight.toString() + "px");
+
+                        // This call is required for the editor to fix all of
+                        // its inner structure for adapting to a change in size
+                        self.editor.resize();
+                    };
+
+                    // Set initial size to match initial content
+                    heightUpdateFunction();
+
+                    // Whenever a change happens inside the ACE editor, update
+                    // the size again
+                    self.editor.getSession().on('change', heightUpdateFunction);
+                }
+
+                // READONLY
+                if (this.schema.readonly)
+                {
+                    this.editor.setReadOnly(true);
+                }
+
+
+
+                // if the editor's dom element gets destroyed, make sure we clean up the editor instance
+                // normally, we expect Alpaca fields to be destroyed by the destroy() method but they may also be
+                // cleaned-up via the DOM, thus we check here.
+                $(el).bind('destroyed', function() {
+
+                    if (self.editor) {
+                        self.editor.destroy();
+                        self.editor = null;
+                    }
+                });
+
+            },
+
+            /**
+             * @see Alpaca.Field#destroy
+             */
+            destroy: function() {
+
+                // destroy the editor instance
+                if (this.editor)
+                {
+                    this.editor.destroy();
+                    this.editor = null;
+                }
+
+                // call up to base method
+                this.base();
+            },
+
+            /**
+             * @return the ACE editor instance
+             */
+            getEditor: function()
+            {
+                return this.editor;
+            },
+
+            /**
+             * @see Alpaca.ControlField#handleValidate
+             */
+            handleValidate: function() {
+                var baseStatus = this.base();
+
+                var valInfo = this.validation;
+
+                var status =  this._validateWordCount();
+                valInfo["wordLimitExceeded"] = {
+                    "message": status ? "" : Alpaca.substituteTokens(this.view.getMessage("wordLimitExceeded"), [this.options.wordlimit]),
+                    "status": status
+                };
+
+                return baseStatus && valInfo["wordLimitExceeded"]["status"];
+            },
+
+            /**
+             * Validate for word limit.
+             *
+             * @returns {Boolean} True if the number of words is equal to or less than the word limit.
+             */
+            _validateWordCount: function() {
+
+                if (this.options.wordlimit && this.options.wordlimit > -1)
+                {
+                    var val = this.editor.getValue();
+
+                    if (val)
+                    {
+                        var wordcount = val.split(" ").length;
+                        if (wordcount > this.options.wordlimit)
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            },
+
+
+            /**
+             *@see Alpaca.Fields.TextField#setValue
+             */
+            setValue: function(value) {
+
+                if (this.editor)
+                {
+                    this.editor.setValue(value);
+                }
+
+                // be sure to call into base method
+                this.base(value);
+            },
+
+            /**
+             * @see Alpaca.Fields.TextField#getValue
+             */
+            getValue: function() {
+
+                var value = null;
+
+                if (this.editor)
+                {
+                    value = this.editor.getValue();
+                }
+
+                return value;
+            },//__BUILDER_HELPERS
+
+            /**
+             * @private
+             * @see Alpaca.Fields.TextField#getSchemaOfOptions
+             */
+            getSchemaOfOptions: function() {
+                return Alpaca.merge(this.base(), {
+                    "properties": {
+                        "aceTheme": {
+                            "title": "ACE Editor Theme",
+                            "description": "Specifies the theme to set onto the editor instance",
+                            "type": "string",
+                            "default": "ace/theme/twilight"
+                        },
+                        "aceMode": {
+                            "title": "ACE Editor Mode",
+                            "description": "Specifies the mode to set onto the editor instance",
+                            "type": "string",
+                            "default": "ace/mode/javascript"
+                        },
+                        "aceWidth": {
+                            "title": "ACE Editor Height",
+                            "description": "Specifies the width of the wrapping div around the editor",
+                            "type": "string",
+                            "default": "100%"
+                        },
+                        "aceHeight": {
+                            "title": "ACE Editor Height",
+                            "description": "Specifies the height of the wrapping div around the editor",
+                            "type": "string",
+                            "default": "300px"
+                        },
+                        "aceFitContentHeight": {
+                            "title": "ACE Fit Content Height",
+                            "description": "Configures the ACE Editor to auto-fit its height to the contents of the editor",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "wordlimit": {
+                            "title": "Word Limit",
+                            "description": "Limits the number of words allowed in the text area.",
+                            "type": "number",
+                            "default": -1
+                        }
+                    }
+                });
+            },
+
+            /**
+             * @private
+             * @see Alpaca.Fields.TextField#getOptionsForOptions
+             */
+            getOptionsForOptions: function() {
+                return Alpaca.merge(this.base(), {
+                    "fields": {
+                        "aceTheme": {
+                            "type": "text"
+                        },
+                        "aceMode": {
+                            "type": "text"
+                        },
+                        "wordlimit": {
+                            "type": "integer"
+                        }
+                    }
+                });
+            },
+
+            /**
+             * @see Alpaca.Fields.TextField#getTitle
+             */
+            getTitle: function() {
+                return "Editor";
+            },
+
+            /**
+             * @see Alpaca.Fields.TextField#getDescription
+             */
+            getDescription: function() {
+                return "Editor";
+            },
+
+            /**
+             * @see Alpaca.Fields.TextField#getFieldType
+             */
+            getFieldType: function() {
+                return "editor";
+            }//__END_OF_BUILDER_HELPERS
+
+        });
+
+    Alpaca.registerMessages({
+        "wordLimitExceeded": "The maximum word limit of {0} has been exceeded."
+    });
+
+    Alpaca.registerTemplate("controlFieldEditor", '<div id="${id}" class="control-field-editor-el"></div>');
+    Alpaca.registerFieldClass("editor", Alpaca.Fields.EditorField);
+
+})(jQuery);
+(function($) {
+
+    var Alpaca = $.alpaca;
+
     Alpaca.Fields.EmailField = Alpaca.Fields.TextField.extend(
     /**
      * @lends Alpaca.Fields.EmailField.prototype
@@ -13549,7 +13918,7 @@ address:
             if (Alpaca.isValEmpty(textValue)) {
                 return "";
             } else {
-                return parseInt(textValue);
+                return parseInt(textValue, 10);
             }
         },
 
@@ -13799,7 +14168,7 @@ address:
 				this.fieldContainer.addClass('alpaca-controlfield-ipv4');
 			}	
         },
-		        
+
         /**
          * @see Alpaca.Fields.TextField#handleValidate
          */
@@ -13984,7 +14353,7 @@ address:
         /**
          * @see Alpaca.Fields.TextAreaField#postRender
          */
-    	postRender: function() {
+        postRender: function() {
             this.base();
             var _this = this;
 
@@ -14224,7 +14593,7 @@ address:
             if (Alpaca.isValEmpty(textValue)) {
                 return "";
             } else {
-                return parseInt(textValue);
+                return parseInt(textValue, 10);
             }
         },
 
@@ -14626,7 +14995,7 @@ address:
         /**
          * @see Alpaca.Fields.TextAreaField#postRender
          */
-    	postRender: function() {
+        postRender: function() {
             this.base();
 			if (this.fieldContainer) {
 				this.fieldContainer.addClass('alpaca-controlfield-map');
@@ -14711,7 +15080,7 @@ address:
 				this.fieldContainer.addClass('alpaca-controlfield-password');
 			}
         },
-		        
+
         /**
          * @see Alpaca.Fields.TextField#handleValidate
          */
@@ -14842,7 +15211,7 @@ address:
             var upperValue = "";
 
             for ( var i = 0; i < val.length; i++ ) {
-                if ( i == 0 ) {
+                if ( i === 0 ) {
                     upperValue += val.charAt(i).toUpperCase();
                 } else if (val.charAt(i-1) == ' ' ||  val.charAt(i-1) == '-' || val.charAt(i-1) == "'") {
                     upperValue += val.charAt(i).toUpperCase();
@@ -15103,7 +15472,7 @@ address:
          */
         getValue: function() {
             var val = this.base();
-            if (val == "") {
+            if (val === "") {
                 return [];
             }
             return val.split(this.options.separator);
@@ -15113,7 +15482,7 @@ address:
          * @see Alpaca.Fields.TextField#setValue
          */
         setValue: function(val) {
-            if (val == "") {
+            if (val === "") {
                 return;
             }
 
@@ -15131,7 +15500,7 @@ address:
             var trimmed = [];
 
             $.each(vals, function(i, v) {
-                if (v.trim() != "") {
+                if (v.trim() !== "") {
                     trimmed.push(v.trim());
                 }
             });
@@ -15294,7 +15663,7 @@ address:
          */
         setValue: function(val) {
             // skip out if no time
-            if (val == "") {
+            if (val === "") {
                 this.base(val);
                 return;
             }
@@ -15536,7 +15905,7 @@ address:
         /**
          * @see Alpaca.Fields.TextAreaField#postRender
          */
-    	postRender: function() {
+        postRender: function() {
             this.base();            
 			// see if we can render jWysiwyg
             var _this = this;
@@ -16232,7 +16601,7 @@ address:
             }
 
             return result;
-        }
+        };
     }();
 
 })(jQuery);
