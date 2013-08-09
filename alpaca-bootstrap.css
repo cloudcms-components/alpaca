@@ -1,5 +1,5 @@
 /*!
-Alpaca Version 1.0.9
+Alpaca Version 1.1.0
 
 Copyright 2013 Gitana Software, Inc.
 
@@ -75,4 +75,35 @@ address:
     bottom:0;
     left: 0;
     right:0
+}
+
+DIV.alpaca-controlfield-text .twitter-typeahead .tt-dropdown-menu
+{
+    background-color: white;
+    border: 1px #777 solid;
+    padding-left: 10px;
+    margin-left: 2px;
+    padding-right: 10px;
+    color: #ccc;
+}
+
+DIV.alpaca-controlfield-text .twitter-typeahead .tt-dropdown-menu P
+{
+    font-size: 1em;
+}
+
+.tt-suggestion.tt-is-under-cursor
+{
+    background-color: #ccc;
+    color: #333;
+}
+
+.alpaca-controlfield-message-hidden
+{
+    display:none;
+}
+
+.alpaca-controlfield-checkbox INPUT[type=checkbox]
+{
+    margin-left: 0px;
 }
