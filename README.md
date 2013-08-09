@@ -1,5 +1,5 @@
-alpaca
-======
+Alpaca JS Library
+=================
 
 This repository holds the latest release of AlpacaJS.  It is provided here so that component-driven tools like Bower can uset his repository for automated installation from the command-line.
 
