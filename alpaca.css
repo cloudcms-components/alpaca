@@ -1,5 +1,5 @@
 /*!
-Alpaca Version 1.1.0
+Alpaca Version 1.1.2
 
 Copyright 2013 Gitana Software, Inc.
 
@@ -25,6 +25,11 @@ address:
 
 .alpaca-clear {
     clear: both;
+}
+
+.alpaca-hidden
+{
+    display: none;
 }
 
 /** Abstract Field **/
@@ -162,6 +167,11 @@ DIV.alpaca-controlfield-text .twitter-typeahead .tt-dropdown-menu P
 {
     background-color: #ccc;
     color: #333;
+}
+
+.alpaca-fieldset-legend-button-text
+{
+    padding-left: 6px;
 }
 
 /* END styles for Text Field */
@@ -929,3 +939,4 @@ fieldset.alpaca-view-web-edit-yaml .ui-button-icon-only .ui-button-text, .ui-but
 */
 
 /* END styles for VIEW: VIEW_WEB_EDIT_INLINE */
+
