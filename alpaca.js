@@ -1,7 +1,7 @@
 /*!
-Alpaca Version 1.1.2
+Alpaca Version 1.1.3
 
-Copyright 2013 Gitana Software, Inc.
+Copyright 2014 Gitana Software, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); 
 you may not use this file except in compliance with the License. 
@@ -64,9 +64,9 @@ address:
     //return {};
 
     /*!
-Alpaca Version 1.1.2
+Alpaca Version 1.1.3
 
-Copyright 2013 Gitana Software, Inc.
+Copyright 2014 Gitana Software, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); 
 you may not use this file except in compliance with the License. 
@@ -9486,6 +9486,12 @@ var equiv = function () {
                                     "enum":["post","get"],
                                     "type": "string"
                                 },
+				"rubyrails": {
+				    "title": "Ruby On Rails",
+				    "description": "Ruby on Rails Name Standard",
+				    "enum": ["true", "false"],
+				    "type": "string"
+				},
                                 "name": {
                                     "title": "Name",
                                     "description": "Form name",
@@ -11836,10 +11842,25 @@ var equiv = function () {
 
             if (this.field)
             {
-                if (Alpaca.isEmpty(value)) {
+                if (Alpaca.isEmpty(value))
+                {
                     this.field.val("");
-                } else {
+
+                    // if using typeahead, set using typeahead control
+                    if ( this.field && this.field.typeahead && this.options.typeahead)
+                    {
+                        $(this.field).typeahead('val', '');
+                    }
+                }
+                else
+                {
                     this.field.val(value);
+
+                    // if using typeahead, set using typeahead control
+                    if ( this.field && this.field.typeahead && this.options.typeahead)
+                    {
+                        $(this.field).typeahead('val', value);
+                    }
                 }
             }
 
@@ -14114,12 +14135,24 @@ var equiv = function () {
         /**
          * @see Alpaca.ContainerField#setup
          */
-        setup: function() {
+        setup: function()
+        {
             this.base();
 
             this.options.toolbarStyle = Alpaca.isEmpty(this.view.toolbarStyle) ? "button" : this.view.toolbarStyle;
 
-            if (!this.options.items) {
+            // determine whether we are using "ruby on rails" compatibility mode
+            this.options.rubyrails = false;
+            if (this.parent && this.parent.options && this.parent.options.form && this.parent.options.form.attributes)
+            {
+                if (!Alpaca.isEmpty(this.parent.options.form.attributes.rubyrails))
+                {
+	  	            this.options.rubyrails = true;
+	            }
+            }
+
+            if (!this.options.items)
+            {
                 this.options.items = {};
             }
 
@@ -14150,13 +14183,18 @@ var equiv = function () {
                 });
             }
 
-            if (Alpaca.isEmpty(this.data)) {
+            if (Alpaca.isEmpty(this.data))
+            {
                 return;
             }
-            if (!Alpaca.isArray(this.data)) {
-                if (!Alpaca.isString(this.data)) {
+            if (!Alpaca.isArray(this.data))
+            {
+                if (!Alpaca.isString(this.data))
+                {
                     return;
-                } else {
+                }
+                else
+                {
                     try {
                         this.data = Alpaca.parseJSON(this.data);
                         if (!Alpaca.isArray(this.data)) {
@@ -14178,16 +14216,21 @@ var equiv = function () {
 
             var _this = this;
 
-            if (!data || !Alpaca.isArray(data)) {
+            if (!data || !Alpaca.isArray(data))
+            {
                 return;
             }
 
             // set fields
-            for (var i = 0; i < this.children.length; i++) {
+            for (var i = 0; i < this.children.length; i++)
+            {
                 var childField = this.children[i];
-                if (data.length > i) {
+                if (data.length > i)
+                {
                     childField.setValue(data[i]);
-                } else {
+                }
+                else
+                {
                     this.removeItem(childField.id); //remove child items if there are more children than in data
                 }
             }
@@ -14231,7 +14274,6 @@ var equiv = function () {
                     });
                 });
             }
-
         },
 
         /**
@@ -14293,9 +14335,11 @@ var equiv = function () {
         /**
          * Update field path and name when an array item is removed, inserted or switched.
          */
-        updatePathAndName: function() {
+        updatePathAndName: function()
+        {
             var _this = this;
-            if (this.children) {
+            if (this.children)
+            {
                 $.each(this.children,function(i,v) {
                     var idx = v.path.lastIndexOf('/');
                     var lastSegment = v.path.substring(idx+1);
@@ -14308,18 +14352,34 @@ var equiv = function () {
 
                     }
                     // re-calculate name
-                    if (v.nameCalculated) {
+                    if (v.nameCalculated)
+                    {
                         v.preName = v.name;
-                        if (v.parent && v.parent.name && v.path) {
+
+                        if (v.parent && v.parent.name && v.path)
+                        {
                             v.name = v.parent.name + "_" + i;
-                        } else {
-                            if (v.path) {
+                        }
+                        else
+                        {
+                            if (v.path)
+                            {
                                 v.name = v.path.replace(/\//g, "").replace(/\[/g, "_").replace(/\]/g, "");
                             }
                         }
-                        $(v.field).attr('name', v.name);
+
+			            if (this.parent.options.rubyrails )
+                        {
+                            $(v.field).attr('name', v.parent.name);
+			            }
+                        else
+                        {
+                            $(v.field).attr('name', v.name);
+ 			            }
                     }
-                    if (!v.prePath) {
+
+                    if (!v.prePath)
+                    {
                         v.prePath = v.path;
                     }
                     _this.updateChildrenPathAndName(v);
@@ -14711,6 +14771,10 @@ var equiv = function () {
                             $(containerElem).attr("data-alpaca-item-container-item-key", index);
 
                             _this.updateToolbarItemsStatus(_this.outerEl);
+
+                            if (Alpaca.isFunction(_this.options.items.postRender)) {
+                                _this.options.items.postRender(containerElem);
+                            }
 
                             if (cb)
                             {
@@ -17216,10 +17280,55 @@ var equiv = function () {
 	});
 
 })(jQuery);
-/*!
-Alpaca Version 1.1.2
+(function($) {
 
-Copyright 2013 Gitana Software, Inc.
+	var Alpaca = $.alpaca;
+
+	Alpaca.registerView ({
+		"id": "VIEW_BASE",
+		"messages": {
+            "pl_PL": {
+                required: "To pole jest wymagane",
+                invalid: "To pole jest nieprawidłowe",
+                months: ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"],
+                timeUnits: {
+                    SECOND: "sekundy",
+                    MINUTE: "minuty",
+                    HOUR: "godziny",
+                    DAY: "dni",
+                    MONTH: "miesiące",
+                    YEAR: "lata"
+                },
+                "notOptional": "To pole nie jest opcjonalne",
+                "disallowValue": "Ta wartość nie jest dozwolona: {0}",
+                "invalidValueOfEnum": "To pole powinno zawierać jedną z następujących wartości: {0}",
+                "notEnoughItems": "Minimalna liczba elementów wynosi {0}",
+                "tooManyItems": "Maksymalna liczba elementów wynosi {0}",
+                "valueNotUnique": "Te wartości nie są unikalne",
+                "notAnArray": "Ta wartość nie jest tablicą",
+                "invalidDate": "Niepoprawny format daty: {0}",
+                "invalidEmail": "Niepoprawny adres email, n.p.: info@cloudcms.com",
+                "stringNotAnInteger": "Ta wartość nie jest liczbą całkowitą",
+                "invalidIPv4": "Niepoprawny adres IPv4, n.p.: 192.168.0.1",
+                "stringValueTooSmall": "Minimalna wartość dla tego pola wynosi {0}",
+                "stringValueTooLarge": "Maksymalna wartość dla tego pola wynosi {0}",
+                "stringValueTooSmallExclusive": "Wartość dla tego pola musi być większa niż {0}",
+                "stringValueTooLargeExclusive": "Wartość dla tego pola musi być mniejsza niż {0}",
+                "stringDivisibleBy": "Wartość musi być podzielna przez {0}",
+                "stringNotANumber": "Wartość nie jest liczbą",
+                "invalidPassword": "Niepoprawne hasło",
+                "invalidPhone": "Niepoprawny numer telefonu, n.p.: (123) 456-9999",
+                "invalidPattern": "To pole powinno mieć format {0}",
+                "stringTooShort": "To pole powinno zawierać co najmniej {0} znaków",
+                "stringTooLong": "To pole powinno zawierać najwyżej {0} znaków"
+            }
+		}
+	});
+
+})(jQuery);/*!
+Alpaca Version 1.1.3
+
+Copyright 2014 Gitana Software, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License"); 
 you may not use this file except in compliance with the License. 
@@ -17489,6 +17598,274 @@ address:
     });
 
     Alpaca.registerFieldClass("address", Alpaca.Fields.AddressField);
+})(jQuery);
+(function($) {
+
+    var round = (function() {
+        var strategies = {
+            up:      Math.ceil,
+            down:    function(input) { return ~~input; },
+            nearest: Math.round
+        };
+        return function(strategy) {
+            return strategies[strategy];
+        };
+    })();
+
+    var Alpaca = $.alpaca;
+
+    Alpaca.Fields.CurrencyField = Alpaca.Fields.TextField.extend(
+    /**
+     * @lends Alpaca.Fields.CurrencyField.prototype
+     */
+    {
+        /**
+         * @constructs
+         * @augments Alpaca.Fields.TextField
+         *
+         * @class Currency Control
+         *
+         * @param {Object} container Field container.
+         * @param {Any} data Field data.
+         * @param {Object} options Field options.
+         * @param {Object} schema Field schema.
+         * @param {Object|String} view Field view.
+         * @param {Alpaca.Connector} connector Field connector.
+         * @param {Function} errorCallback Error callback.
+         */
+        constructor: function(container, data, options, schema, view, connector, errorCallback) {
+            options = options || {};
+
+            var pfOptionsSchema = this.getSchemaOfPriceFormatOptions().properties;
+            for (var i in pfOptionsSchema) {
+                var option = pfOptionsSchema[i];
+                if (!(i in options)) {
+                    options[i] = option["default"] || undefined;
+                }
+            }
+
+            data = "" + parseFloat(data).toFixed(options.centsLimit);
+
+            this.base(container, data, options, schema, view, connector, errorCallback);
+        },
+
+        /**
+         * @see Alpaca.Fields.TextField#postRender
+         */
+        postRender: function(callback) {
+
+            var self = this;
+
+            this.base(function() {
+
+                $(self.field).priceFormat(self.options);
+
+                callback();
+
+            });
+        },
+
+        /**
+         * @see Alpaca.Fields.TextField#getValue
+         */
+        getValue: function() {
+            var field = this.field;
+            var val   = $(field).is('input') ? field.val() : field.hmtl();
+            if (this.options.unmask || this.options.round !== "none") {
+                var unmasked = (function() {
+                    var result = '';
+                    for (var i in val) {
+                        var cur = val[i];
+                        if (!isNaN(cur)) {
+                            result += cur;
+                        } else if (cur === this.options.centsSeparator) {
+                            result += '.';
+                        }
+                    }
+                    return parseFloat(result);
+                }).bind(this)();
+                if (this.options.round !== "none") {
+                    unmasked = round(this.options.round)(unmasked);
+                    if (!this.options.unmask) {
+                        var result = [];
+                        var unmaskedString = "" + unmasked;
+                        for (var i = 0, u = 0; i < val.length; i++) {
+                            if (!isNaN(val[i])) {
+                                result.push(unmaskedString[u++] || 0)
+                            } else {
+                                result.push(val[i]);
+                            }
+                        }
+                        return result.join('');
+                    }
+                }
+                return unmasked;
+            } else {
+                return val;
+            }
+        },//__BUILDER_HELPERS
+
+        getSchemaOfPriceFormatOptions: function() {
+            return {
+                "properties": {
+                    "allowNegative": {
+                        "title": "Allow Negative",
+                        "description": "Determines if negative numbers are allowed.",
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "centsLimit": {
+                        "title": "Cents Limit",
+                        "description": "The limit of fractional digits.",
+                        "type": "number",
+                        "default": 2,
+                        "minimum": 0
+                    },
+                    "centsSeparator": {
+                        "title": "Cents Separator",
+                        "description": "The separator between whole and fractional amounts.",
+                        "type": "text",
+                        "default": "."
+                    },
+                    "clearPrefix": {
+                        "title": "Clear Prefix",
+                        "description": "Determines if the prefix is cleared on blur.",
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "clearSuffix": {
+                        "title": "Clear Suffix",
+                        "description": "Determines if the suffix is cleared on blur.",
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "insertPlusSign": {
+                        "title": "Plus Sign",
+                        "description": "Determines if a plus sign should be inserted for positive values.",
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "limit": {
+                        "title": "Limit",
+                        "description": "A limit of the length of the field.",
+                        "type": "number",
+                        "default": undefined,
+                        "minimum": 0
+                    },
+                    "prefix": {
+                        "title": "Prefix",
+                        "description": "The prefix if any for the field.",
+                        "type": "text",
+                        "default": "$"
+                    },
+                    "round": {
+                        "title": "Round",
+                        "description": "Determines if the field is rounded. (Rounding is done when getValue is called and is not reflected in the UI)",
+                        "type": "string",
+                        "enum": [ "up", "down", "nearest", "none" ],
+                        "default": "none"
+                    },
+                    "suffix": {
+                        "title": "Suffix",
+                        "description": "The suffix if any for the field.",
+                        "type": "text",
+                        "default": ""
+                    },
+                    "thousandsSeparator": {
+                        "title": "Thousands Separator",
+                        "description": "The separator between thousands.",
+                        "type": "string",
+                        "default": ","
+                    },
+                    "unmask": {
+                        "title": "Unmask",
+                        "description": "If true then the resulting value for this field will be unmasked.  That is, the resulting value will be a float instead of a string (with the prefix, suffix, etc. removed).",
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            };
+        },
+
+        /**
+         * @private
+         * @see Alpaca.Fields.TextField#getSchemaOfOptions
+         */
+        getSchemaOfOptions: function() {
+            return Alpaca.merge(this.base(), this.getSchemaOfPriceFormatOptions());
+        },
+
+        /**
+         * @private
+         * @see Alpaca.Fields.TextField#getOptionsForOptions
+         */
+        getOptionsForOptions: function() {
+            return Alpaca.merge(this.base(), {
+                "fields": {
+                    "allowNegative": {
+                        "type": "checkbox"
+                    },
+                    "centsLimit": {
+                        "type": "number"
+                    },
+                    "centsSeparator": {
+                        "type": "text"
+                    },
+                    "clearPrefix": {
+                        "type": "checkbox"
+                    },
+                    "clearSuffix": {
+                        "type": "checkbox"
+                    },
+                    "insertPlusSign": {
+                        "type": "checkbox"
+                    },
+                    "limit": {
+                        "type": "number"
+                    },
+                    "prefix": {
+                        "type": "text"
+                    },
+                    "round": {
+                        "type": "select"
+                    },
+                    "suffix": {
+                        "type": "text"
+                    },
+                    "thousandsSeparator": {
+                        "type": "string"
+                    },
+                    "unmask": {
+                        "type": "checkbox"
+                    }
+                }
+            });
+        },
+
+        /**
+         * @see Alpaca.Fields.TextField#getTitle
+         */
+        getTitle: function() {
+            return "Currency Field";
+        },
+
+        /**
+         * @see Alpaca.Fields.TextField#getDescription
+         */
+        getDescription: function() {
+            return "Provides an automatically formatted and configurable input for entering currency amounts.";
+        },
+
+        /**
+         * @see Alpaca.Fields.TextField#getFieldType
+         */
+        getFieldType: function() {
+            return "currency";
+        }//__END_OF_BUILDER_HELPERS
+    });
+
+    Alpaca.registerFieldClass("currency", Alpaca.Fields.CurrencyField);
+
 })(jQuery);
 (function($) {
 
